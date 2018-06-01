@@ -5,11 +5,11 @@ import tel.schich.puzzles.SudokuSolver.IndexGroup
 import scala.io.Source
 
 case class Sudoku[T](field: IndexedSeq[T], width: Int, domain: Set[T], undefined: T)
-case class FieldType(id: Char) {
+case class FieldType(id: Char, mask: Long) {
     override def toString: String = s"$id"
 }
 
-object UndefinedFieldType extends FieldType(' ')
+object UndefinedFieldType extends FieldType(' ', 0)
 
 object FieldType {
     implicit val ordering: Ordering[FieldType] = Ordering.by(_.id)
@@ -22,7 +22,9 @@ object Loader {
     def loadPuzzle(in: String): Either[String, Sudoku[FieldType]] = {
         val stripped = in.replaceAll("(\r\n|\r|\n)+", "\n").split('\n').toVector.map(_.replaceAll("\\s", ""))
         stripped.headOption.toRight("Empty spec").flatMap { domainSpec =>
-            val domain = domainSpec.toSet.map(FieldType.apply)
+            val domainChars = domainSpec.toSet
+            val masks = (0 until domainChars.size).map(1L << _)
+            val domain = domainChars.zip(masks).map((FieldType.apply _).tupled)
             if (domain.isEmpty) Left("empty domain")
             else {
                 val widths = stripped.tail.map(_.length).toSet
