@@ -22,9 +22,9 @@ object Loader {
     def loadPuzzle(in: String): Either[String, Sudoku[FieldType]] = {
         val stripped = in.replaceAll("(\r\n|\r|\n)+", "\n").split('\n').toVector.map(_.replaceAll("\\s", ""))
         stripped.headOption.toRight("Empty spec").flatMap { domainSpec =>
-            val domainChars = domainSpec.toSet
-            val masks = (0 until domainChars.size).map(1L << _)
-            val domain = domainChars.zip(masks).map((FieldType.apply _).tupled)
+            val domainChars = domainSpec.distinct.sorted
+            val masks = domainChars.indices.map(1L << _)
+            val domain = domainChars.sorted.zip(masks).map((FieldType.apply _).tupled).toSet
             if (domain.isEmpty) Left("empty domain")
             else {
                 val widths = stripped.tail.map(_.length).toSet

@@ -85,7 +85,7 @@ object SudokuSolver {
             println("Symbol mapping:")
             val bitStrings = domain.map(s => (s.toString, masked.mask(s).toBinaryString)).toMap
             val longest = bitStrings.values.map(_.length).max
-            for ((s, mask) <- bitStrings) {
+            for ((s, mask) <- bitStrings.toSeq.sortBy(_._1)) {
                 println(s"$s -> ${mask.reverse.padTo(longest, '0').reverse}")
             }
 
