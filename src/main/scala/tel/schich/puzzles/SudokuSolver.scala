@@ -18,53 +18,53 @@ object SudokuSolver {
 
     type IndexGroup = Seq[Int]
 
+    private def loadPuzzle(path: String) = {
+        Loader.loadPuzzle(Source.fromFile(path)) match {
+            case Right(puzzle) => puzzle
+            case Left(error) => throw new Exception(error)
+        }
+    }
+
+    private def loadGroups(path: String) = {
+        Loader.loadGroups(Source.fromFile(path))
+    }
+
     def main(args: Array[String]): Unit = {
 
-        val basePath = "src/test/scala/tel/schich/puzzles"
+        val (puzzle, reference, groups) = args match {
+            case Array(puzzlePath, "none", groupPaths @ _*) =>
+                (loadPuzzle(puzzlePath), None, groupPaths.flatMap(loadGroups))
 
-        val puzzles = Seq(/*"easy", */"very-hard1"/*, "very-hard2"*/)
-            .map { s =>
-                val input = Loader.loadPuzzle(Source.fromFile(s"$basePath/sudokus/$s.txt")) match {
-                    case Right(puzzle) => puzzle
-                    case Left(error) => throw new Exception(error)
-                }
-                val reference = Loader.loadPuzzle(Source.fromFile(s"$basePath/sudokus/solutions/$s.txt")) match {
-                    case Right(solution) => solution
-                    case Left(error) => throw new Exception(error)
-                }
-                (input, reference)
-            }
+            case Array(puzzlePath, referencePath, groupPaths @ _*) =>
+                (loadPuzzle(puzzlePath), Some(loadPuzzle(referencePath)), groupPaths.flatMap(loadGroups))
+        }
 
-        val groups = Seq("rows-cols", "squares")
-            .flatMap(g => Loader.loadGroups(Source.fromFile(s"$basePath/groups/$g.txt")))
 
-        for ((puzzle, reference) <- puzzles) {
-            if (sys.env.contains("PROFILE")) {
-                for (_ <- 1 to 1000) {
-                    solve(/*scala.util.Random.shuffle(*/puzzle.field/*)*/, puzzle.domain, puzzle.undefined, groups)
-                }
-            }
+        for (_ <- 1 to sys.env.getOrElse("PROFILE", "0").toInt) {
+            solve(/*scala.util.Random.shuffle(*/puzzle.field/*)*/, puzzle.domain, puzzle.undefined, groups)
+        }
 
-            println("Input:")
-            printConcreteState(puzzle.width, puzzle.field, puzzle.undefined)
+        println("Input:")
+        printConcreteState(puzzle.width, puzzle.field, puzzle.undefined)
 
-            val start = System.nanoTime()
-            val solution_? = solve(puzzle.field, puzzle.domain, puzzle.undefined, groups)
-            val delta = System.nanoTime() - start
-            println(s"The solver took ${delta / 1000}µs!")
-            solution_? match {
-                case Right(solution) =>
-                    println("Result:")
-                    printConcreteState(puzzle.width, solution, puzzle.undefined)
-                    if (solution == reference.field) {
+        val start = System.currentTimeMillis()
+        val solution_? = solve(puzzle.field, puzzle.domain, puzzle.undefined, groups)
+        val delta = System.currentTimeMillis() - start
+        println(s"The solver took ${delta}ms!")
+        solution_? match {
+            case Right(solution) =>
+                println("Result:")
+                printConcreteState(puzzle.width, solution, puzzle.undefined)
+                reference.foreach { ref =>
+                    if (solution == ref.field) {
                         println(s"Matches reference!")
                     } else {
                         println("Reference:")
-                        printConcreteState(reference.width, reference.field, reference.undefined)
+                        printConcreteState(ref.width, ref.field, ref.undefined)
                     }
-                case Left(reason) =>
-                    println(s"No solution found: $reason")
-            }
+                }
+            case Left(reason) =>
+                println(s"No solution found: $reason")
         }
 
     }
