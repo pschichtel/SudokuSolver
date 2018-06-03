@@ -37,10 +37,10 @@ object SudokuSolver {
         println("Input:")
         printConcreteState(puzzle.width, puzzle.field, puzzle.undefined)
 
-        val start = System.currentTimeMillis()
+        val start = System.nanoTime()
         val solution_? = solve(puzzle.field, puzzle.domain, puzzle.undefined, groups)
-        val delta = System.currentTimeMillis() - start
-        println(s"The solver took ${delta}ms!")
+        val delta = System.nanoTime() - start
+        println(s"The solver took ${(delta / 1000).toString.reverse.grouped(3).mkString(",").reverse}µs!")
         solution_? match {
             case Right(solution) =>
                 println("Result:")
