@@ -9,7 +9,7 @@ object SudokuSolver {
     type IndexGroup = Seq[Int]
 
     private def loadPuzzle(path: String) = {
-        Loader.loadPuzzle(Source.fromFile(path)) match {
+        Loader.loadPuzzle(path) match {
             case Right(puzzle) => puzzle
             case Left(error) => throw new Exception(error)
         }
@@ -21,17 +21,29 @@ object SudokuSolver {
 
     def main(args: Array[String]): Unit = {
 
-        val (puzzle, reference, groups) = args match {
-            case Array(puzzlePath, "none", groupPaths @ _*) =>
-                (loadPuzzle(puzzlePath), None, groupPaths.flatMap(loadGroups))
+        args match {
+            case Array() =>
+                println("No puzzle given!")
+                println("Usage: <puzzle path> <group spec path>*")
+                System.exit(1)
+            case Array(_) =>
+                println("No group specs given!")
+                println("Usage: <puzzle path> <group spec path>*")
+                System.exit(2)
+            case Array(puzzlePath, groupSpecPaths @ _*) =>
+                val input = loadPuzzle(puzzlePath)
+                val reference = Loader.loadPuzzle(s"$puzzlePath.reference").right.toOption
+                val groups = groupSpecPaths.flatMap(loadGroups)
 
-            case Array(puzzlePath, referencePath, groupPaths @ _*) =>
-                (loadPuzzle(puzzlePath), Some(loadPuzzle(referencePath)), groupPaths.flatMap(loadGroups))
+                trySolve(input, reference, groups)
         }
+    }
 
-
-        for (_ <- 1 to sys.env.getOrElse("PROFILE", "0").toInt) {
-            solve(/*scala.util.Random.shuffle(*/puzzle.field/*)*/, puzzle.domain, puzzle.undefined, groups)
+    def trySolve(puzzle:  Sudoku[FieldType], reference:  Option[Sudoku[FieldType]], groups: Seq[IndexGroup]): Unit = {
+        if (sys.env.contains("PROFILE")) {
+            for (_ <- 1 to 1000) {
+                solve(scala.util.Random.shuffle(puzzle.field), puzzle.domain, puzzle.undefined, groups)
+            }
         }
 
         println("Input:")
@@ -45,7 +57,7 @@ object SudokuSolver {
             case Right(solution) =>
                 println("Result:")
                 printConcreteState(puzzle.width, solution, puzzle.undefined)
-                reference.foreach { ref =>
+                reference foreach { ref =>
                     if (solution == ref.field) {
                         println(s"Matches reference!")
                     } else {
@@ -56,7 +68,6 @@ object SudokuSolver {
             case Left(reason) =>
                 println(s"No solution found: $reason")
         }
-
     }
 
     def solve[T](field: IndexedSeq[T], domain: Set[T], undefined: T, groups: Seq[IndexGroup])(implicit ordering: Ordering[T]): Either[String, Seq[T]] = {
@@ -85,7 +96,7 @@ object SudokuSolver {
                 else if (reducedField.exists(_.size > 1)) searchSolution(reducedField, groupLookup).toRight("No solution found.") // the the search space has been reduced
                 else Right(reducedField) // easy puzzle will be reduced the to solution
 
-            solution.map(_.map(_.head))
+            solution.right.map(_.map(_.head))
         }
     }
 

@@ -3,6 +3,7 @@ package tel.schich.puzzles
 import tel.schich.puzzles.SudokuSolver.IndexGroup
 
 import scala.io.Source
+import scala.util.{Failure, Success, Try}
 
 case class Sudoku[T](field: IndexedSeq[T], width: Int, domain: Set[T], undefined: T)
 case class FieldType(id: Char) {
@@ -19,9 +20,9 @@ object Loader {
 
     val UndefinedId = '_'
 
-    def loadPuzzle(in: String): Either[String, Sudoku[FieldType]] = {
+    def parsePuzzle(in: String): Either[String, Sudoku[FieldType]] = {
         val stripped = in.replaceAll("(\r\n|\r|\n)+", "\n").split('\n').toVector.map(_.replaceAll("\\s", ""))
-        stripped.headOption.toRight("Empty spec").flatMap { domainSpec =>
+        stripped.headOption.toRight("Empty spec").right.flatMap { domainSpec =>
             val domain = domainSpec.toSet.map(FieldType.apply)
             if (domain.isEmpty) Left("empty domain")
             else {
@@ -37,9 +38,15 @@ object Loader {
         }
     }
 
+    def loadPuzzle(path: String): Either[String, Sudoku[FieldType]] = {
+        Try(loadPuzzle(Source.fromFile(path))) match {
+            case Success(either) => either
+            case Failure(e) => Left(e.getLocalizedMessage)
+        }
+    }
 
     def loadPuzzle(in: Source): Either[String, Sudoku[FieldType]] =
-        loadPuzzle(in.mkString)
+        parsePuzzle(in.mkString)
 
     def loadGroups(input: String): Seq[IndexGroup] = {
         input
